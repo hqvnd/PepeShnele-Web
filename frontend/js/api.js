@@ -2,7 +2,7 @@
 // 🔌 API Module - Работа с бэкендом
 // ========================================
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'https://pepeshnele-web.onrender.com/api'; // URL вашего бэкенда
 
 // Вспомогательная функция для HTTP запросов
 async function request(endpoint, options = {}) {
