@@ -9,12 +9,13 @@ const PORT = process.env.PORT || 5000;
 
 const server = app.listen(PORT, () => {
   console.log('=================================');
-  console.log('🚀 Pepe Shnele API Server');
+  console.log('Pepe Shnele API Server');
   console.log('=================================');
-  console.log(`📍 Environment: ${process.env.NODE_ENV}`);
-  console.log(`🌐 Server running on port ${PORT}`);
-  console.log(`🔗 URL: http://localhost:${PORT}`);
-  console.log(`📚 API Docs: http://localhost:${PORT}/api`);
+  console.log(`Environment: ${process.env.NODE_ENV}`);
+  console.log(`Server running on port ${PORT}`);
+  console.log(`URL: http://localhost:${PORT}`);
+  console.log(`Frontend: http://localhost:8000`);
+  console.log(`API Docs: http://localhost:${PORT}/api`);
   console.log('=================================');
 });
 
