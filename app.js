@@ -16,10 +16,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Enable CORS
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
-  credentials: true
-}));
+const corsOptions = {
+  origin: [
+    'http://localhost:3000',      // React/Vue dev
+    'http://localhost:8000',      // Frontend http-server
+    'http://127.0.0.1:8000',      // Frontend alternative localhost
+    'http://127.0.0.1:3000'       // Alternative localhost
+  ],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -29,6 +37,39 @@ const limiter = rateLimit({
 });
 
 app.use('/api/', limiter);
+
+// API info route
+app.get('/api', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Welcome to Pepe Shnele API',
+    version: '1.0.0',
+    endpoints: {
+      auth: {
+        register: 'POST /api/auth/register',
+        login: 'POST /api/auth/login',
+        getMe: 'GET /api/auth/me (protected)'
+      },
+      users: {
+        profile: 'GET /api/users/profile (protected)',
+        updateProfile: 'PUT /api/users/profile (protected)',
+        favorites: 'GET /api/users/favorites (protected)'
+      },
+      events: {
+        getAll: 'GET /api/events',
+        create: 'POST /api/events (protected)',
+        getOne: 'GET /api/events/:id',
+        update: 'PUT /api/events/:id (protected)',
+        delete: 'DELETE /api/events/:id (protected)'
+      },
+      announcements: {
+        getAll: 'GET /api/announcements',
+        create: 'POST /api/announcements (protected)',
+        getOne: 'GET /api/announcements/:id'
+      }
+    }
+  });
+});
 
 // Mount routers
 app.use('/api/auth', authRoutes);

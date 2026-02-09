@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "frontend": "npx http-server -p 8000 -o /frontend/index.html",
+    "seed": "node seeds.js"
   },
   "keywords": ["event", "announcement", "social", "backend"],
   "author": "Your Team Name",
