@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="PepeShnele - Платформа событий и объявлений с социальными функциями">
+  <title>PepeShnele - События и Объявления</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Навигация -->
+  <nav class="navbar">
+    <div class="navbar-container">
+      <a href="/frontend/index.html" class="navbar-brand">
+        🎭 PepeShnele
+      </a>
+      
+      <button class="navbar-toggle">☰</button>
+      
+      <ul class="navbar-menu">
+        <li><a href="/frontend/index.html" class="navbar-link active">Главная</a></li>
+        <li><a href="/frontend/pages/events.html" class="navbar-link">События</a></li>
+        <li><a href="/frontend/pages/announcements.html" class="navbar-link">Объявления</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <h1>Найди свое событие</h1>
+      <p>Откройте для себя интересные мероприятия, участвуйте в обсуждениях и делитесь впечатлениями</p>
+      
+      <div class="hero-search">
+        <div class="search-bar">
+          <span class="search-icon">🔍</span>
+          <input 
+            type="text" 
+            class="search-input" 
+            placeholder="Поиск событий..."
+            id="heroSearch"
+          >
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Фильтры по категориям -->
+  <section class="section-sm">
+    <div class="container">
+      <div class="filters">
+        <button class="filter-btn active" data-category="all">Все</button>
+        <button class="filter-btn" data-category="education">📚 Образование</button>
+        <button class="filter-btn" data-category="entertainment">🎭 Развлечения</button>
+        <button class="filter-btn" data-category="sports">⚽ Спорт</button>
+        <button class="filter-btn" data-category="technology">💻 Технологии</button>
+        <button class="filter-btn" data-category="business">💼 Бизнес</button>
+        <button class="filter-btn" data-category="arts">🎨 Искусство</button>
+        <button class="filter-btn" data-category="social">🤝 Социальное</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Список событий -->
+  <section class="section">
+    <div class="container">
+      <div class="flex justify-between items-center mb-4">
+        <h2>Предстоящие события</h2>
+        <div class="flex gap-2">
+          <button class="btn btn-sm btn-secondary" data-date="all">Все</button>
+          <button class="btn btn-sm btn-primary" data-date="upcoming">Предстоящие</button>
+          <button class="btn btn-sm btn-secondary" data-date="past">Прошедшие</button>
+        </div>
+      </div>
+
+      <div id="eventsContainer" class="grid grid-3">
+        <!-- События будут загружены через JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Последние объявления -->
+  <section class="section" style="background: var(--bg-primary);">
+    <div class="container">
+      <h2 class="mb-4">Последние объявления</h2>
+      <div id="announcementsContainer" class="grid grid-2">
+        <!-- Объявления будут загружены через JS -->
+      </div>
+      <div class="text-center mt-4">
+        <a href="/frontend/pages/announcements.html" class="btn btn-outline">Все объявления →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-brand">🎭 PepeShnele</div>
+      <div class="footer-links">
+        <a href="/frontend/index.html" class="footer-link">Главная</a>
+        <a href="/frontend/pages/events.html" class="footer-link">События</a>
+        <a href="/frontend/pages/announcements.html" class="footer-link">Объявления</a>
+        <a href="#" class="footer-link">О нас</a>
+        <a href="#" class="footer-link">Контакты</a>
+      </div>
+      <div class="footer-bottom">
+        © 2026 PepeShnele. Все права защищены.
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/utils.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    // Состояние фильтров
+    let currentFilters = {
+      category: 'all',
+      date: 'upcoming',
+      search: ''
+    };
+
+    // Загрузка событий
+    async function loadEvents() {
+      const container = document.getElementById('eventsContainer');
+      showLoading(container);
+
+      try {
+        const filters = {};
+        if (currentFilters.category !== 'all') filters.category = currentFilters.category;
+        if (currentFilters.date !== 'all') filters.date = currentFilters.date;
+        if (currentFilters.search) filters.search = currentFilters.search;
+
+        const response = await eventsAPI.getAll(filters);
+        const events = response.data;
+
+        if (events.length === 0) {
+          showEmptyState(
+            container,
+            'События не найдены',
+            'Попробуйте изменить фильтры или поиск',
+            '<a href="/frontend/pages/events.html" class="btn btn-primary">Посмотреть все события</a>'
+          );
+          return;
+        }
+
+        container.innerHTML = events.map(event => createEventCard(event)).join('');
+      } catch (error) {
+        showError(container, 'Ошибка загрузки событий: ' + error.message);
+      }
+    }
+
+    // Создание карточки события
+    function createEventCard(event) {
+      const eventDate = new Date(event.eventDate);
+      const isPast = eventDate < new Date();
+      
+      return `
+        <div class="card event-card">
+          <div class="event-card-image"></div>
+          <div class="card-body">
+            <span class="event-category">${getCategoryEmoji(event.category)} ${getCategoryName(event.category)}</span>
+            <h3 class="card-title">${truncate(event.title, 60)}</h3>
+            <p class="card-text">${truncate(event.description, 120)}</p>
+            
+            <div class="event-meta">
+              <span class="event-meta-item">📅 ${formatDateShort(event.eventDate)}</span>
+              <span class="event-meta-item">📍 ${event.location}</span>
+            </div>
+
+            <div class="stats mt-2">
+              <span class="stat-item">❤️ ${event.likes?.length || 0}</span>
+              <span class="stat-item">💬 ${event.comments?.length || 0}</span>
+              ${event.averageRating > 0 ? `<span class="stat-item">⭐ ${event.averageRating}</span>` : ''}
+            </div>
+          </div>
+          <div class="card-footer">
+            <a href="/frontend/pages/event-detail.html?id=${event._id}" class="btn btn-primary btn-sm" style="width: 100%;">
+              Подробнее →
+            </a>
+          </div>
+        </div>
+      `;
+    }
+
+    // Загрузка объявлений
+    async function loadAnnouncements() {
+      const container = document.getElementById('announcementsContainer');
+      showLoading(container);
+
+      try {
+        const response = await announcementsAPI.getAll();
+        const announcements = response.data.slice(0, 4); // Первые 4
+
+        if (announcements.length === 0) {
+          showEmptyState(container, 'Объявлений пока нет', '');
+          return;
+        }
+
+        container.innerHTML = announcements.map(announcement => `
+          <div class="card">
+            <div class="card-body">
+              <h4 class="card-title">${announcement.title}</h4>
+              <p class="card-text">${truncate(announcement.content, 150)}</p>
+              <div class="stats mt-2">
+                <span class="stat-item">❤️ ${announcement.likes?.length || 0}</span>
+                <span class="stat-item text-secondary">${timeAgo(announcement.createdAt)}</span>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      } catch (error) {
+        showError(container, 'Ошибка загрузки объявлений');
+      }
+    }
+
+    // Обработчики фильтров
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilters.category = btn.dataset.category;
+        loadEvents();
+      });
+    });
+
+    document.querySelectorAll('[data-date]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-date]').forEach(b => {
+          b.classList.remove('btn-primary');
+          b.classList.add('btn-secondary');
+        });
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-primary');
+        currentFilters.date = btn.dataset.date;
+        loadEvents();
+      });
+    });
+
+    // Поиск с debounce
+    const searchInput = document.getElementById('heroSearch');
+    if (searchInput) {
+      searchInput.addEventListener('input', debounce((e) => {
+        currentFilters.search = e.target.value;
+        loadEvents();
+      }, 500));
+    }
+
+    // Загрузка данных при загрузке страницы
+    document.addEventListener('DOMContentLoaded', () => {
+      loadEvents();
+      loadAnnouncements();
+    });
+  </script>
+</body>
+</html>

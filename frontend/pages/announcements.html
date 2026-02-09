@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Объявления - PepeShnele</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <!-- Навигация -->
+  <nav class="navbar">
+    <div class="navbar-container">
+      <a href="/frontend/index.html" class="navbar-brand">🎭 PepeShnele</a>
+      <button class="navbar-toggle">☰</button>
+      <ul class="navbar-menu">
+        <li><a href="/frontend/index.html" class="navbar-link">Главная</a></li>
+        <li><a href="/frontend/pages/events.html" class="navbar-link">События</a></li>
+        <li><a href="/frontend/pages/announcements.html" class="navbar-link active">Объявления</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Header -->
+  <section class="section-sm" style="background: var(--bg-primary);">
+    <div class="container">
+      <h1>Объявления</h1>
+      <p class="text-secondary">Важная информация и новости о событиях</p>
+    </div>
+  </section>
+
+  <!-- Объявления -->
+  <section class="section">
+    <div class="container-sm">
+      <div id="announcementsContainer">
+        <!-- Загружается через JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-brand">🎭 PepeShnele</div>
+      <div class="footer-links">
+        <a href="/frontend/index.html" class="footer-link">Главная</a>
+        <a href="/frontend/pages/events.html" class="footer-link">События</a>
+        <a href="/frontend/pages/announcements.html" class="footer-link">Объявления</a>
+      </div>
+      <div class="footer-bottom">© 2026 PepeShnele. Все права защищены.</div>
+    </div>
+  </footer>
+
+  <script src="../js/utils.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+  <script>
+    async function loadAnnouncements() {
+      const container = document.getElementById('announcementsContainer');
+      showLoading(container);
+
+      try {
+        const response = await announcementsAPI.getAll();
+        const announcements = response.data;
+
+        if (announcements.length === 0) {
+          showEmptyState(
+            container,
+            'Объявлений пока нет',
+            'Следите за обновлениями'
+          );
+          return;
+        }
+
+        const currentUser = getCurrentUser();
+        
+        container.innerHTML = announcements.map(announcement => {
+          const userLiked = currentUser && announcement.likes.some(like => like.user === currentUser.id);
+          
+          return `
+            <div class="card mb-3">
+              <div class="card-body">
+                ${announcement.event ? `
+                  <div class="mb-2">
+                    <span class="badge badge-success">📢 Связано с событием</span>
+                  </div>
+                ` : ''}
+                
+                <h3 class="card-title">${announcement.title}</h3>
+                <p class="card-text" style="white-space: pre-wrap;">${announcement.content}</p>
+                
+                ${announcement.event ? `
+                  <div class="mt-2">
+                    <a href="/frontend/pages/event-detail.html?id=${announcement.event._id}" class="text-primary">
+                      → Перейти к событию: ${announcement.event.title}
+                    </a>
+                  </div>
+                ` : ''}
+
+                <div class="flex justify-between items-center mt-3">
+                  <div class="stats">
+                    <span class="stat-item">👤 ${announcement.createdBy.username}</span>
+                    <span class="stat-item">${timeAgo(announcement.createdAt)}</span>
+                  </div>
+                  
+                  ${isAuthenticated() ? `
+                    <button 
+                      onclick="toggleLike('${announcement._id}')" 
+                      class="btn btn-sm ${userLiked ? 'btn-danger' : 'btn-outline'}"
+                    >
+                      ${userLiked ? '❤️' : '🤍'} ${announcement.likes.length}
+                    </button>
+                  ` : `
+                    <span class="stat-item">❤️ ${announcement.likes.length}</span>
+                  `}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (error) {
+        showError(container, 'Ошибка загрузки объявлений: ' + error.message);
+      }
+    }
+
+    async function toggleLike(announcementId) {
+      try {
+        await announcementsAPI.toggleLike(announcementId);
+        loadAnnouncements();
+      } catch (error) {
+        showAlert('Ошибка: ' + error.message, 'error');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadAnnouncements);
+  </script>
+</body>
+</html>

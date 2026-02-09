@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Создать событие - PepeShnele Admin</title>
+  <link rel="stylesheet" href="../../css/style.css">
+</head>
+<body>
+  <!-- Навигация -->
+  <nav class="navbar">
+    <div class="navbar-container">
+      <a href="/frontend/index.html" class="navbar-brand">🎭 PepeShnele</a>
+      <button class="navbar-toggle">☰</button>
+      <ul class="navbar-menu">
+        <li><a href="/frontend/index.html" class="navbar-link">Главная</a></li>
+        <li><a href="/frontend/pages/events.html" class="navbar-link">События</a></li>
+        <li><a href="/frontend/pages/announcements.html" class="navbar-link">Объявления</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Форма создания события -->
+  <section class="section">
+    <div class="container-sm">
+      <h1 id="pageTitle">Создать событие</h1>
+      
+      <div class="card mt-4">
+        <div class="card-body">
+          <form id="eventForm">
+            <div class="form-group">
+              <label for="title" class="form-label">Название события *</label>
+              <input 
+                type="text" 
+                id="title" 
+                class="form-input" 
+                placeholder="Введите название..."
+                required
+                minlength="5"
+                maxlength="200"
+              >
+            </div>
+
+            <div class="form-group">
+              <label for="description" class="form-label">Описание *</label>
+              <textarea 
+                id="description" 
+                class="form-textarea" 
+                placeholder="Подробное описание события..."
+                required
+                minlength="20"
+                maxlength="5000"
+                rows="6"
+              ></textarea>
+            </div>
+
+            <div class="grid grid-2">
+              <div class="form-group">
+                <label for="category" class="form-label">Категория *</label>
+                <select id="category" class="form-select" required>
+                  <option value="">Выберите категорию</option>
+                  <option value="education">📚 Образование</option>
+                  <option value="entertainment">🎭 Развлечения</option>
+                  <option value="sports">⚽ Спорт</option>
+                  <option value="technology">💻 Технологии</option>
+                  <option value="business">💼 Бизнес</option>
+                  <option value="arts">🎨 Искусство</option>
+                  <option value="social">🤝 Социальное</option>
+                  <option value="other">📌 Другое</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="eventDate" class="form-label">Дата события *</label>
+                <input 
+                  type="datetime-local" 
+                  id="eventDate" 
+                  class="form-input" 
+                  required
+                >
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="location" class="form-label">Место проведения *</label>
+              <input 
+                type="text" 
+                id="location" 
+                class="form-input" 
+                placeholder="Адрес или место..."
+                required
+              >
+            </div>
+
+            <div id="errorMsg"></div>
+
+            <div class="flex gap-2 mt-4">
+              <button type="submit" class="btn btn-primary">
+                <span id="submitBtnText">Создать событие</span>
+              </button>
+              <a href="/frontend/pages/events.html" class="btn btn-secondary">Отмена</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-brand">🎭 PepeShnele</div>
+      <div class="footer-links">
+        <a href="/frontend/index.html" class="footer-link">Главная</a>
+        <a href="/frontend/pages/events.html" class="footer-link">События</a>
+        <a href="/frontend/pages/announcements.html" class="footer-link">Объявления</a>
+      </div>
+      <div class="footer-bottom">© 2026 PepeShnele. Все права защищены.</div>
+    </div>
+  </footer>
+
+  <script src="../../js/utils.js"></script>
+  <script src="../../js/api.js"></script>
+  <script src="../../js/auth.js"></script>
+  <script>
+    // Защита: только для админов
+    if (!requireAdmin()) {
+      // Перенаправит
+    }
+
+    const eventId = getUrlParameter('id');
+    const isEditMode = !!eventId;
+
+    // Установить минимальную дату (сегодня)
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    document.getElementById('eventDate').min = now.toISOString().slice(0, 16);
+
+    // Если режим редактирования
+    if (isEditMode) {
+      document.getElementById('pageTitle').textContent = 'Редактировать событие';
+      document.getElementById('submitBtnText').textContent = 'Сохранить изменения';
+      loadEventForEdit();
+    }
+
+    async function loadEventForEdit() {
+      try {
+        const response = await eventsAPI.getById(eventId);
+        const event = response.data;
+
+        document.getElementById('title').value = event.title;
+        document.getElementById('description').value = event.description;
+        document.getElementById('category').value = event.category;
+        document.getElementById('location').value = event.location;
+        
+        // Форматируем дату для input
+        const eventDate = new Date(event.eventDate);
+        eventDate.setMinutes(eventDate.getMinutes() - eventDate.getTimezoneOffset());
+        document.getElementById('eventDate').value = eventDate.toISOString().slice(0, 16);
+      } catch (error) {
+        showAlert('Ошибка загрузки события: ' + error.message, 'error');
+        setTimeout(() => window.location.href = '/frontend/pages/events.html', 2000);
+      }
+    }
+
+    document.getElementById('eventForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errorMsg = document.getElementById('errorMsg');
+      errorMsg.innerHTML = '';
+
+      const eventData = {
+        title: document.getElementById('title').value.trim(),
+        description: document.getElementById('description').value.trim(),
+        category: document.getElementById('category').value,
+        eventDate: document.getElementById('eventDate').value,
+        location: document.getElementById('location').value.trim(),
+      };
+
+      // Валидация
+      if (!eventData.title || !eventData.description || !eventData.category || !eventData.eventDate || !eventData.location) {
+        errorMsg.innerHTML = '<div class="alert alert-error">Заполните все обязательные поля</div>';
+        return;
+      }
+
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      const originalText = submitBtn.querySelector('span').textContent;
+      submitBtn.disabled = true;
+      submitBtn.querySelector('span').textContent = isEditMode ? 'Сохранение...' : 'Создание...';
+
+      try {
+        if (isEditMode) {
+          await eventsAPI.update(eventId, eventData);
+          showAlert('Событие обновлено!', 'success');
+        } else {
+          await eventsAPI.create(eventData);
+          showAlert('Событие создано!', 'success');
+        }
+        
+        setTimeout(() => {
+          window.location.href = '/frontend/pages/events.html';
+        }, 1500);
+      } catch (error) {
+        errorMsg.innerHTML = `<div class="alert alert-error">${error.message}</div>`;
+        submitBtn.disabled = false;
+        submitBtn.querySelector('span').textContent = originalText;
+      }
+    });
+  </script>
+</body>
+</html>

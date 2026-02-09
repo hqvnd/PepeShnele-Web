@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Детали события - PepeShnele</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+  <!-- Навигация -->
+  <nav class="navbar">
+    <div class="navbar-container">
+      <a href="/frontend/index.html" class="navbar-brand">🎭 PepeShnele</a>
+      <button class="navbar-toggle">☰</button>
+      <ul class="navbar-menu">
+        <li><a href="/frontend/index.html" class="navbar-link">Главная</a></li>
+        <li><a href="/frontend/pages/events.html" class="navbar-link">События</a></li>
+        <li><a href="/frontend/pages/announcements.html" class="navbar-link">Объявления</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- Детали события -->
+  <section class="section">
+    <div class="container-sm">
+      <div id="eventDetail">
+        <!-- Загружается через JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-brand">🎭 PepeShnele</div>
+      <div class="footer-links">
+        <a href="/frontend/index.html" class="footer-link">Главная</a>
+        <a href="/frontend/pages/events.html" class="footer-link">События</a>
+        <a href="/frontend/pages/announcements.html" class="footer-link">Объявления</a>
+      </div>
+      <div class="footer-bottom">© 2026 PepeShnele. Все права защищены.</div>
+    </div>
+  </footer>
+
+  <script src="../js/utils.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+  <script>
+    const eventId = getUrlParameter('id');
+    let currentEvent = null;
+
+    async function loadEventDetail() {
+      const container = document.getElementById('eventDetail');
+      
+      if (!eventId) {
+        showError(container, 'ID события не указан');
+        return;
+      }
+
+      showLoading(container);
+
+      try {
+        const response = await eventsAPI.getById(eventId);
+        currentEvent = response.data;
+        renderEvent(currentEvent);
+      } catch (error) {
+        showError(container, 'Ошибка загрузки события: ' + error.message);
+      }
+    }
+
+    function renderEvent(event) {
+      const container = document.getElementById('eventDetail');
+      const isAuth = isAuthenticated();
+      const currentUser = getCurrentUser();
+      const isOwner = currentUser && event.createdBy._id === currentUser.id;
+      const isPast = new Date(event.eventDate) < new Date();
+      const userLiked = isAuth && event.likes.some(like => like.user === currentUser.id);
+      
+      container.innerHTML = `
+        <div class="mb-3">
+          <a href="/frontend/pages/events.html" class="text-secondary">← Назад к событиям</a>
+        </div>
+
+        <div class="card">
+          <div class="event-card-image" style="height: 300px;"></div>
+          
+          <div class="card-body">
+            <div class="flex justify-between items-center mb-3">
+              <span class="badge badge-primary">${getCategoryEmoji(event.category)} ${getCategoryName(event.category)}</span>
+              ${isOwner && isAdmin() ? `
+                <div class="flex gap-2">
+                  <button onclick="editEvent()" class="btn btn-sm btn-secondary">✏️ Редактировать</button>
+                  <button onclick="deleteEvent()" class="btn btn-sm btn-danger">🗑️ Удалить</button>
+                </div>
+              ` : ''}
+            </div>
+
+            <h1>${event.title}</h1>
+            
+            <div class="flex gap-3 mb-3 text-secondary">
+              <span>📅 ${formatDate(event.eventDate)}</span>
+              <span>📍 ${event.location}</span>
+              <span>👤 ${event.createdBy.username}</span>
+            </div>
+
+            <p style="white-space: pre-wrap; color: var(--text-secondary);">${event.description}</p>
+
+            <div class="flex gap-3 mt-4">
+              <button 
+                onclick="toggleLike()" 
+                class="btn ${userLiked ? 'btn-danger' : 'btn-outline'}"
+                ${!isAuth ? 'disabled' : ''}
+              >
+                ${userLiked ? '❤️' : '🤍'} ${event.likes.length}
+              </button>
+              <span class="btn btn-secondary">💬 ${event.comments.length}</span>
+              ${event.averageRating > 0 ? `<span class="btn btn-secondary">⭐ ${event.averageRating}</span>` : ''}
+            </div>
+
+            ${isPast && isAuth ? `
+              <div class="mt-4">
+                <h3>Оцените событие</h3>
+                <div id="ratingContainer"></div>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+
+        <!-- Комментарии -->
+        <div class="comments mt-4">
+          <h3 class="mb-3">Комментарии (${event.comments.length})</h3>
+          
+          ${isAuth ? `
+            <div class="card mb-4">
+              <div class="card-body">
+                <textarea 
+                  id="commentInput" 
+                  class="form-textarea" 
+                  placeholder="Написать комментарий..."
+                  rows="3"
+                ></textarea>
+                <button onclick="addComment()" class="btn btn-primary mt-2">Отправить</button>
+              </div>
+            </div>
+          ` : `
+            <div class="alert alert-info mb-4">
+              <a href="/frontend/pages/login.html">Войдите</a>, чтобы оставлять комментарии
+            </div>
+          `}
+
+          <div id="commentsContainer">
+            ${event.comments.length === 0 ? '<p class="text-secondary">Комментариев пока нет</p>' : ''}
+            ${event.comments.map(comment => renderComment(comment)).join('')}
+          </div>
+        </div>
+      `;
+
+      // Рейтинг для прошедших событий
+      if (isPast && isAuth) {
+        const userRating = event.ratings.find(r => r.user._id === currentUser.id);
+        const ratingContainer = document.getElementById('ratingContainer');
+        const interactiveStars = createInteractiveStars(userRating ? userRating.rating : 0, rateEvent);
+        ratingContainer.appendChild(interactiveStars);
+      }
+    }
+
+    function renderComment(comment) {
+      const currentUser = getCurrentUser();
+      const isOwner = currentUser && comment.user._id === currentUser.id;
+      const userLiked = currentUser && comment.likes.includes(currentUser.id);
+
+      return `
+        <div class="comment">
+          <div class="comment-header">
+            <span class="comment-author">${comment.user.username}</span>
+            <span class="comment-date">${timeAgo(comment.createdAt)}</span>
+          </div>
+          <div class="comment-body">${comment.content}</div>
+          <div class="comment-actions">
+            <button 
+              onclick="toggleCommentLike('${comment._id}')" 
+              class="comment-action"
+              ${!isAuthenticated() ? 'disabled' : ''}
+            >
+              ${userLiked ? '❤️' : '🤍'} ${comment.likes.length}
+            </button>
+            ${ isOwner || isAdmin() ? `
+              <button onclick="deleteComment('${comment._id}')" class="comment-action">
+                🗑️ Удалить
+              </button>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    // Лайк события
+    async function toggleLike() {
+      if (!isAuthenticated()) return;
+      
+      try {
+        await eventsAPI.toggleLike(eventId);
+        loadEventDetail();
+        showAlert('Лайк обновлен', 'success');
+      } catch (error) {
+        showAlert('Ошибка: ' + error.message, 'error');
+      }
+    }
+
+    // Добавить комментарий
+    async function addComment() {
+      const input = document.getElementById('commentInput');
+      const content = input.value.trim();
+      
+      if (!content) {
+        showAlert('Введите текст комментария', 'warning');
+        return;
+      }
+
+      try {
+        await eventsAPI.addComment(eventId, content);
+        input.value = '';
+        loadEventDetail();
+        showAlert('Комментарий добавлен', 'success');
+      } catch (error) {
+        showAlert('Ошибка: ' + error.message, 'error');
+      }
+    }
+
+    // Удалить комментарий
+    async function deleteComment(commentId) {
+      if (!confirm('Удалить комментарий?')) return;
+
+      try {
+        await eventsAPI.deleteComment(eventId, commentId);
+        loadEventDetail();
+        showAlert('Комментарий удален', 'success');
+      } catch (error) {
+        showAlert('Ошибка: ' + error.message, 'error');
+      }
+    }
+
+    // Лайк комментария
+    async function toggleCommentLike(commentId) {
+      try {
+        await eventsAPI.toggleCommentLike(eventId, commentId);
+        loadEventDetail();
+      } catch (error) {
+        showAlert('Ошибка: ' + error.message, 'error');
+      }
+    }
+
+    // Оценить событие
+    async function rateEvent(rating) {
+      try {
+        await eventsAPI.rate(eventId, rating);
+        loadEventDetail();
+        showAlert('Спасибо за вашу оценку!', 'success');
+      } catch (error) {
+        showAlert('Ошибка: ' + error.message, 'error');
+      }
+    }
+
+    // Редактировать событие
+    function editEvent() {
+      window.location.href = `/frontend/pages/admin/create-event.html?id=${eventId}`;
+    }
+
+    // Удалить событие
+    async function deleteEvent() {
+      if (!confirm('Вы уверены, что хотите удалить это событие?')) return;
+
+      try {
+        await eventsAPI.delete(eventId);
+        showAlert('Событие удалено', 'success');
+        setTimeout(() => {
+          window.location.href = '/frontend/pages/events.html';
+        }, 1500);
+      } catch (error) {
+        showAlert('Ошибка: ' + error.message, 'error');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadEventDetail);
+  </script>
+</body>
+</html>
